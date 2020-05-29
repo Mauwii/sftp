@@ -1,5 +1,7 @@
-FROM debian:stretch
-MAINTAINER Adrian Dvergsdal [atmoz.net]
+FROM debian:buster
+LABEL  maintainer="mauwii@outlook.de" tag="sftp:acipersist" description="SFTP Server with persistent Host keys when hosting as a Azure Container Instance "
+# mod of atmoz/sftp
+# origin by Adrian Dvergsdal [atmoz.net]
 
 # Steps done in one RUN layer:
 # - Install packages
@@ -11,7 +13,7 @@ RUN apt-get update && \
     mkdir -p /var/run/sshd && \
     rm -f /etc/ssh/ssh_host_*key*
 
-COPY files/sshd_config /etc/ssh/sshd_config
+COPY AciPersist/sshd/sshd_config /etc/ssh/sshd_config
 COPY files/create-sftp-user /usr/local/bin/
 COPY files/entrypoint /
 

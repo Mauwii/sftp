@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 set -Eeo pipefail
 
 # shellcheck disable=2154
@@ -11,6 +11,7 @@ reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 userConfPath="/etc/sftp/users.conf"
 userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
+acipersistPath="/mnt/acipersist"
 
 function log() {
     echo "[$0] $*" >&2
@@ -64,18 +65,34 @@ if [ ! -f "$userConfFinalPath" ]; then
         exit 3
     fi
 
+    # copy keys from acipersist unique ssh keys for this container, if needed
+    if [ -f /mnt/acipersist/hostkeys/ssh_host_ed25519_key ]; then
+        echo "Copy over hostkeys from acipersist"
+        cp /mnt/acipersist/hostkeys/ssh_host_ed25519_key /etc/ssh/ssh_host_ed25519_key
+        chmod 600 /etc/ssh/ssh_host_ed25519_key
+    fi
+
     # Generate unique ssh keys for this container, if needed
     if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
         ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+        # Todo: add else generate pub
     fi
+    
+    if [ -f /mnt/acipersist/hostkeys/ssh_host_rsa_key ]; then
+        echo "Copy over hostkeys from acipersist"
+        cp /mnt/acipersist/hostkeys/ssh_host_rsa_key /etc/ssh/ssh_host_rsa_key
+        chmod 600 /etc/ssh/ssh_host_rsa_key
+    fi
+
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
         ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''
+        # Todo: add else generate pub
     fi
 fi
 
 # Source custom scripts, if any
-if [ -d /etc/sftp.d ]; then
-    for f in /etc/sftp.d/*; do
+if [ -d /mnt/acipersist/scripts ]; then
+    for f in /mnt/acipersist/scripts/*; do
         if [ -x "$f" ]; then
             log "Running $f ..."
             $f
