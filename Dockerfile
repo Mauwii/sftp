@@ -1,7 +1,11 @@
 FROM debian:buster
-LABEL  maintainer="mauwii@outlook.de" tag="sftp:acipersist" description="SFTP Server with persistent Host keys when hosting as a Azure Container Instance "
 # mod of atmoz/sftp
 # origin by Adrian Dvergsdal [atmoz.net]
+
+LABEL repository="mauwii"
+LABEL tag="sftp:acipersist"
+LABEL maintainer="mauwii@outlook.de"
+LABEL description="SFTP Server with persistent Host keys. Ready for hosting as a Azure Container Instance"
 
 # Steps done in one RUN layer:
 # - Install packages

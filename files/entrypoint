@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 set -Eeo pipefail
 
 # shellcheck disable=2154
@@ -66,9 +66,9 @@ if [ ! -f "$userConfFinalPath" ]; then
     fi
 
     # copy keys from acipersist unique ssh keys for this container, if needed
-    if [ -f /mnt/acipersist/hostkeys/ssh_host_ed25519_key ]; then
+    if [ -f "$acipersistPath/hostkeys/ssh_host_*_key" ]; then
         echo "Copy over hostkeys from acipersist"
-        cp /mnt/acipersist/hostkeys/ssh_host_ed25519_key /etc/ssh/ssh_host_ed25519_key
+        cp "$acipersistPath/hostkeys/ssh_host_ed25519_key" /etc/ssh/ssh_host_ed25519_key
         chmod 600 /etc/ssh/ssh_host_ed25519_key
     fi
 
@@ -78,9 +78,9 @@ if [ ! -f "$userConfFinalPath" ]; then
         # Todo: add else generate pub
     fi
     
-    if [ -f /mnt/acipersist/hostkeys/ssh_host_rsa_key ]; then
+    if [ -f "$acipersistPath/hostkeys/ssh_host_rsa_key" ]; then
         echo "Copy over hostkeys from acipersist"
-        cp /mnt/acipersist/hostkeys/ssh_host_rsa_key /etc/ssh/ssh_host_rsa_key
+        cp "$acipersistPath/hostkeys/ssh_host_rsa_key" /etc/ssh/ssh_host_rsa_key
         chmod 600 /etc/ssh/ssh_host_rsa_key
     fi
 
@@ -91,11 +91,13 @@ if [ ! -f "$userConfFinalPath" ]; then
 fi
 
 # Source custom scripts, if any
-if [ -d /mnt/acipersist/scripts ]; then
-    for f in /mnt/acipersist/scripts/*; do
+if [ -d $acipersistPath/scripts ]; then
+    for f in $acipersistPath/scripts/*; do
         if [ -x "$f" ]; then
             log "Running $f ..."
             $f
+        elif [ -f "$f" ]; then
+            log "ignoring readme.md"
         else
             log "Could not run $f, because it's missing execute permission (+x)."
         fi
