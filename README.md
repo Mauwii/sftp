@@ -6,7 +6,7 @@ my mod of [atmoz/sftp](https://github.com/atmoz/sftp)
 
 ToDo:
 
-* update Readme
+* update [ACI Related](./AciPersist/readme.md) Readme
 
 ## Securely share your files
 
@@ -35,7 +35,7 @@ Easy to use SFTP ([SSH File Transfer Protocol](https://en.wikipedia.org/wiki/SSH
 ### Simplest docker run example
 
 ``` syntax
-docker run -p 22:22 -d mauwii/sftp:acipersist foo:pass:::upload
+docker run -p 22:22 -d mauwii/sftp foo:pass:::upload
 ```
 
 User "foo" with password "pass" can login with sftp and upload files to a folder called "upload". No mounted directories or custom UID/GID. Later you can inspect the files and use `--volumes-from` to mount them somewhere else (or see next example).
@@ -44,18 +44,18 @@ User "foo" with password "pass" can login with sftp and upload files to a folder
 
 Let's mount a directory and set UID:
 
-``` sh
+```bash
 docker run \
     -v /host/upload:/home/foo/upload \
-    -p 2222:22 -d mauwii/sftp:acipersist \
+    -p 2222:22 -d mauwii/sftp \
     foo:pass:1001
 ```
 
 #### Using Docker Compose:
 
-``` yaml
+``` YAML
 sftp:
-    image: mauwii/sftp:acipersist
+    image: mauwii/sftp
     volumes:
         - /host/upload:/home/foo/upload
     ports:
@@ -69,11 +69,11 @@ The OpenSSH server runs by default on port 22, and in this example, we are forwa
 
 ### Store users in config
 
-``` sh
+```bash
 docker run \
     -v /host/users.conf:/etc/sftp/users.conf:ro \
     -v mySftpVolume:/home \
-    -p 2222:22 -d mauwii/sftp:acipersist
+    -p 2222:22 -d mauwii/sftp
 ```
 
 /host/users.conf:
@@ -88,10 +88,10 @@ baz:xyz:1003:100
 
 Add `:e` behind password to mark it as encrypted. Use single quotes if using terminal.
 
-``` sh
+```bash
 docker run \
     -v /host/share:/home/foo/share \
-    -p 2222:22 -d mauwii/sftp:acipersist \
+    -p 2222:22 -d mauwii/sftp \
     'foo:$1$0G2g0GSt$ewU0t6GXG15.0hWoOX8X9.:e:1001'
 ```
 
@@ -102,12 +102,12 @@ Tip: you can use [atmoz/makepasswd](https://hub.docker.com/r/atmoz/makepasswd/) 
 
 Mount public keys in the user's `.ssh/keys/` directory. All keys are automatically appended to `.ssh/authorized_keys` (you can't mount this file directly, because OpenSSH requires limited file permissions). In this example, we do not provide any password, so the user `foo` can only login with his SSH key.
 
-``` sh
+```bash
 docker run \
     -v /host/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro \
     -v /host/id_other.pub:/home/foo/.ssh/keys/id_other.pub:ro \
     -v /host/share:/home/foo/share \
-    -p 2222:22 -d mauwii/sftp:acipersist \
+    -p 2222:22 -d mauwii/sftp \
     foo::1001
 ```
 
@@ -115,18 +115,18 @@ docker run \
 
 This container will generate new SSH host keys at first run. To avoid that your users get a MITM warning when you recreate your container (and the host keys changes), you can mount your own host keys.
 
-``` sh
+```bash
 docker run \
     -v /host/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key \
     -v /host/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key \
     -v /host/share:/home/foo/share \
-    -p 2222:22 -d mauwii/sftp:acipersist \
+    -p 2222:22 -d mauwii/sftp \
     foo::1001
 ```
 
 Tip: you can generate your keys with these commands:
 
-``` sh
+```bash
 ssh-keygen -t ed25519 -f ssh_host_ed25519_key < /dev/null
 ssh-keygen -t rsa -b 4096 -f ssh_host_rsa_key < /dev/null
 ```
@@ -140,7 +140,7 @@ See next section for an example.
 
 If you are using `--volumes-from` or just want to make a custom directory available in user's home directory, you can add a script to `/mnt/acipersist/sshd/` that bindmounts after container starts.
 
-```sh
+```bash
 #!/bin/bash
 # File mounted as: /mnt/acipersist/sshd/bindmount.sh
 # Just an example (make your own)
