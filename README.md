@@ -1,12 +1,8 @@
-# SFTP acipersist
+# mauwii sftp
 
-my mod of [atmoz/sftp](https://github.com/atmoz/sftp)
-(Also available as Container on [Dockerhub](https://hub.docker.com/r/mauwii/sftp))
+modified Version of [atmoz/sftp](https://hub.docker.com/r/atmoz/sftp)
 
 
-ToDo:
-
-* update [ACI Related](./AciPersist/readme.md) Readme
 
 ## Securely share your files
 
@@ -14,9 +10,10 @@ Easy to use SFTP ([SSH File Transfer Protocol](https://en.wikipedia.org/wiki/SSH
 
 ## Usage
 
- Define users in (1) command arguments, (2) `SFTP_USERS` environment variable
+Define users in (1) command arguments, (2) `SFTP_USERS` environment variable
   or (3) in file mounted as `/etc/sftp/users.conf` (syntax:
   `user:pass[:e][:uid[:gid[:dir1[,dir2]...]]] ...`, see below for examples)
+
   * Set UID/GID manually for your users if you want them to make changes to
     your mounted volumes with permissions matching your host filesystem.
   * Directory names at the end will be created under user's home directory with
@@ -175,3 +172,10 @@ It depends on which linux distro and version you choose (see available images at
 * [List of `openssh-server` packages on Debian releases](https://packages.debian.org/search?keywords=openssh-server&searchon=names&exact=1&suite=all&section=main)
 
 **Note:** The time when this image was last built can delay the availability of an OpenSSH release. Since this is an automated build linked with [debian](https://hub.docker.com/_/debian/) and [alpine](https://hub.docker.com/_/alpine/) repos, the build will depend on how often they push changes (out of my control).  Typically this can take 1-5 days, but it can also take longer. You can of course make this more predictable by cloning this repo and run your own build manually.
+
+### ToDo
+
+* update readme (the File you are reading right now)
+* update ACI Related [Readme](https://github.com/Mauwii/sftp-aci/blob/acipersist/AciPersist/README.md)
+* add public key generation
+* everything I forgot right now

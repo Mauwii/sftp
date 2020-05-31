@@ -1,14 +1,25 @@
 # ACI-Persistence
 
-## Configuration
+## Introduction
 
-Mount this Folder to your Azure Container Instance as /mnt/acipersist. In this way you can enjoy persistent Hostkeys which makes your (or your customers) file transfers more secure.
+Mount this Folder to your Azure Container Instance as `/mnt/acipersist`. In this way you can:
+
+* enjoy persistent Hostkeys which makes file transfers more secure for you and your customers
+* manage Userconfigurationfile without rebuilding your Container
+* manage the SFTP Server's SSH Host keys
+* manage the SFTP User's public Keys
 
 If you are prototyping (or just lazy) you can even mount the Folder directly out of this git Repository.
 
+## Configuration
+
 ### Persistent Host Keys
 
-Your SFTP Server's SSH Certificates can be placed in [userkeypubs](./userkeypubs). If this Folder doesn't contain a keyfile which's filename beginns with `ssh_host_`, the Keys which are automatically generated in first run will be copied there.
+Your SFTP Server's SSH Certificates can be placed in [hostkeys](./hostkeys). If this Folder doesn't contain a keyfile which's filename matches `ssh_host_rsa_key` or `ssh_host_ed25519`, the missing Keys will be generated in first run and then copied over.
+
+#### Todo
+
+* add automatic public key generation/update
 
 ### Scripts to run
 
