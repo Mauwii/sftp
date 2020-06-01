@@ -104,7 +104,7 @@ if [[ ! -f "$userConfFinalPath" ]]; then
             if [[ ! -f "$ed25519_hostkey.pub" ]]; then
                 log "generating missing public key for $ed25519_hostkey"
                 ssh-keygen -y -f /etc/ssh/ssh_host_ed25519_key > /etc/ssh/ssh_host_ed25519_key.pub
-                log "saved publickey to /etc/ssh: " $(cat /etc/ssh/ssh_host_ed25519_key.pub)
+                log $(ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key -E md5)
             fi
         else
             log "couldnt find $ed25519_hostkey, generating key"
@@ -125,7 +125,7 @@ if [[ ! -f "$userConfFinalPath" ]]; then
             if [[ ! -f "$rsa_hostkey.pub" ]]; then
                 log "Generating missing public key for $rsa_hostkey."
                 ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
-                log "saved publickey to /etc/ssh: " $(cat /etc/ssh/ssh_host_rsa_key.pub)
+                log $(ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key -E md5)
             fi
         else
         log "couldnt find $rsa_hostkey"
