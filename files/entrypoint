@@ -9,16 +9,16 @@ reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 
 # Paths
 userConfPath="/etc/sftp/users.conf"
-userConfPathLegacy="/etc/sftp-users.conf"
+userConfPathLegacy="/mnt/acipersist/sftp/users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
 acipersistPath="/mnt/acipersist"
 acipersistRepo="/mnt/sftp-aci"
 
 function log() {
-    echo "[$(date) entrypoint] $*" >&2
+    echo "[ $(date) entrypoint ] $*" >&2
 }
 
-if [ -e "$acipersistPath/sftp/users.conf" ]; then
+if [[ -e "$acipersistPath/sftp/users.conf" ]]; then
     # userConfPath="$($acipersistPath/sftp/users.conf)"
     ln -s "$acipersistPath/sftp/users.conf" "$userConfPath"
     log "linked acipersist users.conf to $userConfPath"
@@ -32,9 +32,9 @@ else
 fi
 
 # link repositorys AciPersist folder if repo is cloned into /mnt/sftp-aci-repo
-if [ ! -e "$acipersistPath" ]; then
+if [[ ! -e "$acipersistPath" ]]; then
     log "missing $acipersistPath, trying to link it from $acipersistRepo"
-    if [ -e "$acipersistRepo/AciPersist" ]; then
+    if [[ -e "$acipersistRepo/AciPersist" ]]; then
         # acipersistPath="$acipersistRepo/AciPersist"
         # log "changing acipersistPath to $acipersistPath"
         ln -s "$acipersistRepo/AciPersist" "$acipersistPath"
@@ -49,16 +49,16 @@ fi
 
 
 # Backward compatibility with legacy config path
-if [ ! -f "$userConfPath" ] && [ -f "$userConfPathLegacy" ]; then
+if [[ ! -f "$userConfPath" ]] && [[ -f "$userConfPathLegacy" ]]; then
     mkdir -p "$(dirname $userConfPath)"
     ln -s "$userConfPathLegacy" "$userConfPath"
 fi
 
 # Create users only on first run
-if [ ! -f "$userConfFinalPath" ]; then
+if [[ ! -f "$userConfFinalPath" ]]; then
     mkdir -p "$(dirname $userConfFinalPath)"
 
-    if [ -f "$userConfPath" ]; then
+    if [[ -f "$userConfPath" ]]; then
         # Append mounted config to final config
         grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
     fi
@@ -70,7 +70,7 @@ if [ ! -f "$userConfFinalPath" ]; then
         done
     fi
 
-    if [ -n "$SFTP_USERS" ]; then
+    if [[ -n "$SFTP_USERS" ]]; then
         # Append users from environment variable to final config
         IFS=" " read -r -a usersFromEnv <<< "$SFTP_USERS"
         for user in "${usersFromEnv[@]}"; do
@@ -79,7 +79,7 @@ if [ ! -f "$userConfFinalPath" ]; then
     fi
 
     # Check that we have users in config
-    if [ -f "$userConfFinalPath" ] && [ "$(wc -l < "$userConfFinalPath")" -gt 0 ]; then
+    if [[ -f "$userConfFinalPath" ]] && [[ "$(wc -l < "$userConfFinalPath")" -gt 0 ]]; then
         # Import users from final conf file
         while IFS= read -r user || [[ -n "$user" ]]; do
             create-sftp-user "$user"
@@ -90,25 +90,43 @@ if [ ! -f "$userConfFinalPath" ]; then
     fi
 
     # Generate unique ssh keys for this container, if needed
-    ed25519_hostkey="$acipersistPath/hostkeys/ssh_host_ed25519_key"
-    rsa_hostkey="$acipersistPath/hostkeys/ssh_host_rsa_key"
-    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-        if [ -f "$ed25519_hostkey" ]; then
+   
+    hostkeypath=/mnt/acipersist/hostkeys
+    ed25519_hostkey=$hostkeypath/ssh_host_ed25519_key
+    rsa_hostkey=$hostkeypath/ssh_host_rsa_key
+    
+    if [[ ! -f /etc/ssh/ssh_host_ed25519_key ]]; then
+        if [[ -f "$ed25519_hostkey" ]]; then
             log "found $ed25519_hostkey"
             cp "$ed25519_hostkey" /etc/ssh/ssh_host_ed25519_key
             chmod 600 /etc/ssh/ssh_host_ed25519_key
+            log "copied $ed25519_hostkey to /etc/ssh"
+            if [[ ! -f "$ed25519_hostkey.pub" ]]; then
+                log "generating missing public key for $ed25519_hostkey"
+                ssh-keygen -y -f /etc/ssh/ssh_host_ed25519_key > /etc/ssh/ssh_host_ed25519_key.pub
+                log "saved publickey to /etc/ssh: " $(cat /etc/ssh/ssh_host_ed25519_key.pub)
+            fi
         else
-        log "couldnt find $ed25519_hostkey"
-        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
-        log "copy key to $ed25519_hostkey"
-        cp /etc/ssh/ssh_host_ed25519_key "$ed25519_hostkey"
+            log "couldnt find $ed25519_hostkey, generating key"
+            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+            if [[ -e "$acipersistPath" ]]; then
+                log "copy private and public key to $ed25519_hostkey"
+                mkdir -p "$hostkeypath"
+                cp /etc/ssh/ssh_host_ed25519_key "$ed25519_hostkey"
+                cp /etc/ssh/ssh_host_ed25519_key.pub "$ed25519_hostkey.pub"
+            fi
         fi
     fi
-    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-        if [ -f "$rsa_hostkey" ]; then
+    if [[ ! -f /etc/ssh/ssh_host_rsa_key ]]; then
+        if [[ -f "$rsa_hostkey" ]]; then
             log "found $rsa_hostkey"
             cp "$rsa_hostkey" /etc/ssh/ssh_host_rsa_key
             chmod 600 /etc/ssh/ssh_host_rsa_key
+            if [[ ! -f "$rsa_hostkey.pub" ]]; then
+                log "Generating missing public key for $rsa_hostkey."
+                ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
+                log "saved publickey to /etc/ssh: " $(cat /etc/ssh/ssh_host_rsa_key.pub)
+            fi
         else
         log "couldnt find $rsa_hostkey"
         ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''
@@ -120,9 +138,9 @@ if [ ! -f "$userConfFinalPath" ]; then
 fi
 
 # Source custom scripts, if any
-if [ -d $acipersistPath/scripts ]; then
-    for f in "$acipersistPath"/scripts/*.sh; do
-        if [ -x "$f" ]; then
+if [[ -d $acipersistPath/scripts ]]; then
+    for f in "$acipersistPath/scripts/*.sh" ; do
+        if [[ -x "$f" ]]; then
             log "Running $f ..."
             $f
         else
