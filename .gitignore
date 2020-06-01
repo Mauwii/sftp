@@ -2,3 +2,4 @@
 .env
 *.pub
 *ssh_host_*_key
+.dockerenv
