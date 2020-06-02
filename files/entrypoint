@@ -50,14 +50,11 @@ fi
 # Create users only on first run
 if [[ ! -f "$userConfFinalPath" ]]; then
     mkdir -p "$(dirname $userConfFinalPath)"
-
     if [[ -f "$aciuserconf" ]]; then
         # Append mounted config to final config
-        grep -v -E "$reArgSkip" < "$aciuserconf" > "$userConfFinalPath"
+        grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
     fi
-
-    ln -fs /mnt/acipersist/sftp/users.conf $userConfFinalPath
-
+    cat /mnt/acipersist/sftp/users.conf >> $userConfFinalPath
     if $startSshd; then
         # Append users from arguments to final config
         for user in "$@"; do
