@@ -1,9 +1,9 @@
-# mod of atmoz/sftp
+# mauwii's mod of atmoz/sftp
 # origin by Adrian Dvergsdal [atmoz.net]
-FROM debian:buster
-LABEL tag="mauwii/sftp:acipersist" description="SFTP Server with persistent Host keys, prepared to be hosted as ACI (Azure Container Istance)" author="mauwii"
 
-VOLUME ["/mnt/acipersist"]
+FROM debian:buster
+
+VOLUME  [ "/mnt/acipersist" ]
 
 # Steps done in one RUN layer:
 # - Install packages
@@ -15,10 +15,10 @@ RUN apt-get update && \
     mkdir -p /var/run/sshd && \
     rm -f /etc/ssh/ssh_host_*key*
 
-COPY AciPersist/sshd/sshd_config /etc/ssh/sshd_config
+COPY AciPersist/sshd/sshd_config /etc/ssh/
 COPY files/create-sftp-user /usr/local/bin/
 COPY files/entrypoint /
 
 EXPOSE 22
 
-ENTRYPOINT ["/entrypoint"]
+ENTRYPOINT /entrypoint
