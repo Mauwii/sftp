@@ -20,8 +20,10 @@ function log() {
 
 if [[ -e "$acipersistPath/sftp/users.conf" ]]; then
     # userConfPath="$($acipersistPath/sftp/users.conf)"
-    ln -s "$acipersistPath/sftp/users.conf" "$userConfPath"
-    log "linked acipersist users.conf to $userConfPath"
+    log "changing userConfPath to $acipersistPath/sftp/users.conf"
+    userConfPath="$acipersistPath/sftp/users.conf"
+else
+    log "couldnt find $acipersistPath/sftp/users.conf"
 fi
 
 # Allow running other programs, e.g. bash
@@ -97,44 +99,45 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     
     if [[ ! -f /etc/ssh/ssh_host_ed25519_key ]]; then
         if [[ -f "$ed25519_hostkey" ]]; then
-            log "found $ed25519_hostkey"
+            log "found $ed25519_hostkey with Fingerprint: $(ssh-keygen -l -f $ed25519_hostkey -E md5)"
             cp "$ed25519_hostkey" /etc/ssh/ssh_host_ed25519_key
             chmod 600 /etc/ssh/ssh_host_ed25519_key
             log "copied $ed25519_hostkey to /etc/ssh"
-            if [[ ! -f "$ed25519_hostkey.pub" ]]; then
+            if [[ ! -f "/etc/ssh/ssh_host_ed25519_key.pub" ]]; then
                 log "generating missing public key for $ed25519_hostkey"
                 ssh-keygen -y -f /etc/ssh/ssh_host_ed25519_key > /etc/ssh/ssh_host_ed25519_key.pub
-                log $(ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key -E md5)
             fi
         else
-            log "couldnt find $ed25519_hostkey, generating key"
-            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+            log "couldnt find $ed25519_hostkey, generating new key"
+            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
             if [[ -e "$acipersistPath" ]]; then
-                log "copy private and public key to $ed25519_hostkey"
                 mkdir -p "$hostkeypath"
-                cp /etc/ssh/ssh_host_ed25519_key "$ed25519_hostkey"
-                cp /etc/ssh/ssh_host_ed25519_key.pub "$ed25519_hostkey.pub"
+                cp /etc/ssh/ssh_host_ed25519_key "$acipersistPath/hostkeys/" && log "copied ed25519 hostkey to $ed25519_hostkey"
             fi
         fi
     fi
+
     if [[ ! -f /etc/ssh/ssh_host_rsa_key ]]; then
         if [[ -f "$rsa_hostkey" ]]; then
-            log "found $rsa_hostkey"
+            log "found $rsa_hostkey with Fingerprint: $(ssh-keygen -l -f $rsa_hostkey -E md5)"
             cp "$rsa_hostkey" /etc/ssh/ssh_host_rsa_key
             chmod 600 /etc/ssh/ssh_host_rsa_key
+            log "copied $rsa_hostkey to /etc/ssh"
             if [[ ! -f "$rsa_hostkey.pub" ]]; then
                 log "Generating missing public key for $rsa_hostkey."
                 ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
-                log $(ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key -E md5)
             fi
         else
-        log "couldnt find $rsa_hostkey"
-        ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''
-        log "copy rsa hostkey to $rsa_hostkey"
-        # cp /etc/ssh/ssh_host_rsa_key "$acipersistPath/hostkeys/"
-        # Todo: add else generate pub
+            log "couldnt find $rsa_hostkey, generating new key"
+            ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
+            if [[ -e "$acipersistPath" ]]; then
+                cp /etc/ssh/ssh_host_rsa_key "$acipersistPath/hostkeys/" && log "copied rsa hostkey to $rsa_hostkey"
+            fi
         fi
     fi
+
+    # ToDo: combine ssh_host_*_key generation in loop
+    #   for higher key compatibility
 fi
 
 # Source custom scripts, if any

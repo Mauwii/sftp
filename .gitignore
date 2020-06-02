@@ -3,3 +3,4 @@
 *.pub
 *ssh_host_*_key
 .dockerenv
+.vscode

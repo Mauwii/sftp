@@ -1,8 +1,7 @@
 # mod of atmoz/sftp
 # origin by Adrian Dvergsdal [atmoz.net]
 FROM debian:buster
-LABEL tag="mauwii/sftp:acipersist"
-LABEL description="SFTP Server with persistent Host keys, prepared to be hosted as ACI (Azure Container Istance)"
+LABEL tag="mauwii/sftp:acipersist" description="SFTP Server with persistent Host keys, prepared to be hosted as ACI (Azure Container Istance)" author="mauwii"
 
 VOLUME ["/mnt/acipersist"]
 
