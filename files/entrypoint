@@ -18,7 +18,6 @@ function log() {
     echo "[$0] [$(date)] $*" >&2
 }
 
-
 # Allow running other programs, e.g. bash
 if [[ -z "$1" || "$1" =~ $reArgsMaybe ]]; then
     startSshd=true
@@ -52,13 +51,12 @@ fi
 if [[ ! -f "$userConfFinalPath" ]]; then
     mkdir -p "$(dirname $userConfFinalPath)"
 
-    aciuserconf=$acipersistPath/sftp/users.conf
-    echo "copied $aciuserconf to $userConfPath"
-
     if [[ -f "$aciuserconf" ]]; then
         # Append mounted config to final config
         grep -v -E "$reArgSkip" < "$aciuserconf" > "$userConfFinalPath"
     fi
+
+    ln -fs /mnt/acipersist/sftp/users.conf $userConfFinalPath
 
     if $startSshd; then
         # Append users from arguments to final config
@@ -87,21 +85,22 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     fi
 
     # Generate unique ssh keys for this container, if needed
-   
-    hostkeypath=/mnt/acipersist/hostkeys
-    ed25519_hostkey=$hostkeypath/ssh_host_ed25519_key
-    rsa_hostkey=$hostkeypath/ssh_host_rsa_key
+    hostkeypath=/etc/ssh/
+    ed25519_hostkey=$acipersistPath/hostkeys/ssh_host_ed25519_key
+    rsa_hostkey=$acipersistPath/hostkeys/ssh_host_rsa_key
     
     if [[ ! -f /etc/ssh/ssh_host_ed25519_key ]]; then
         if [[ -f "$ed25519_hostkey" ]]; then
             log "found $ed25519_hostkey"
             cp "$ed25519_hostkey" /etc/ssh/ssh_host_ed25519_key
             chmod 600 /etc/ssh/ssh_host_ed25519_key
-            log "copied $ed25519_hostkey to /etc/ssh"
-            log "generating missing public key for $(ssh-keygen -l -f $ed25519_hostkey -E md5)"
+            log "copied and owned $ed25519_hostkey to /etc/ssh"
+            log "generating missing public key"
             ssh-keygen -y -f /etc/ssh/ssh_host_ed25519_key > /etc/ssh/ssh_host_ed25519_key.pub
+            chown 644 /etc/ssh/ssh_host_ed25519_key.pub
+            log "Fingerprint: $(ssh-keygen -l -f $ed25519_hostkey -E md5)"
         else
-            log "couldnt find $ed25519_hostkey, generating new key"
+            log "couldn't find $ed25519_hostkey, generating new key"
             ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
             if [[ -e "$acipersistPath" ]]; then
                 mkdir -p "$hostkeypath"
@@ -116,10 +115,12 @@ if [[ ! -f "$userConfFinalPath" ]]; then
             cp "$rsa_hostkey" /etc/ssh/ssh_host_rsa_key
             chmod 600 /etc/ssh/ssh_host_rsa_key
             log "copied $rsa_hostkey to /etc/ssh"
-            log "Generating missing public key for $(ssh-keygen -l -f $rsa_hostkey -E md5)"
+            log "Generating missing public key"
             ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
+            chown 644 /etc/ssh/ssh_host_ed25519_key.pub
+            log "Fingerprint: $(ssh-keygen -l -f $rsa_hostkey -E md5)"
         else
-            log "couldnt find $rsa_hostkey, generating new key"
+            log "couldn't find $rsa_hostkey, generating new key"
             ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
             if [[ -e "$acipersistPath" ]]; then
                 cp /etc/ssh/ssh_host_ed25519_key "$rsa_hostkey" && log "copied rsa hostkey to $rsa_hostkey"
