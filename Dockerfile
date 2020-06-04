@@ -15,9 +15,10 @@ RUN apt-get update && \
     mkdir -p /var/run/sshd && \
     rm -f /etc/ssh/ssh_host_*key*
 
-COPY AciPersist/sshd/sshd_config /etc/ssh/
+COPY files/sshd_config /etc/ssh/
 COPY files/create-sftp-user /usr/local/bin/
 COPY files/entrypoint /
+COPY files/copy-hostkeys /mnt/acipersist/scripts/copy-hostkeys.sh
 
 EXPOSE 22
 

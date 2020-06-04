@@ -1,4 +1,2 @@
-.git
 tests
-*.keepme
-*.DS_Store
+*.gitkeep

@@ -80,19 +80,9 @@ else
     usermod -p "*" "$user" # disabled password
 fi
 
-# cat userkeys from acipersist
-if [ -d "/mnt/acipersist/userkeypubs/$user" ]; then
-    mkdir -p "/home/$user/.ssh/"
-    for publickey in "/mnt/acipersist/userkeypubs/$user"/*; do
-        cat "$publickey" >> "/home/$user/.ssh/authorized_keys"
-    done
-    chown "$uid" "/home/$user/.ssh/authorized_keys"
-    chmod 600 "/home/$user/.ssh/authorized_keys"
-fi
-
 # Add SSH keys to authorized_keys with valid permissions
-if [ -d "/home/$user/.ssh/keys" ]; then
-    for publickey in "/home/$user/.ssh/keys"/*; do
+if [ -d "$acipersistpath/userkeypubs/$user" ]; then
+    for publickey in "$acipersistpath/userkeypubs/$user"/*; do
         cat "$publickey" >> "/home/$user/.ssh/authorized_keys"
     done
     chown "$uid" "/home/$user/.ssh/authorized_keys"

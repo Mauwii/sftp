@@ -1,5 +1,7 @@
 # ACI-Persistence
 
+This Readme will get updated when finished reconstruction
+
 ## Introduction
 
 Mount this Folder to your Azure Container Instance as `/mnt/acipersist`. In this way you can:
@@ -27,7 +29,7 @@ Scripts you want to be executed before SSHD get's started should be placed in [s
 
 ### Certificate based Userauthentication
 
-To enable Userauthenticatin via Certificate, create a folder in [/mnt/userkeypubs](./userkeypubs). Name it like the owners Username and copy the keys to be enabled into it:
+To enable Userauthenticatin via Certificate, create a folder in /mnt/userkeypubs. Name it like the owners Username and copy the keys to be enabled into it:
 
 /mnt/acipersist/userkeypubs/username/keys.pub
 

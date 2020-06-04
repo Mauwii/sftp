@@ -12,6 +12,7 @@ userConfPath="/etc/sftp/users.conf"
 userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
 acipersistPath="/mnt/acipersist"
+aciHostkeysPath="$acipersistPath/hostkeys"
 acipersistRepo="/mnt/sftp-aci"
 
 function log() {
@@ -54,7 +55,11 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         # Append mounted config to final config
         grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
     fi
-    cat /mnt/acipersist/sftp/users.conf >> $userConfFinalPath
+
+    if [[ -e /mnt/acipersist/sftp/users.conf ]]; then
+        grep -v -E "$reArgSkip" < /mnt/acipersist/sftp/users.conf > "$userConfFinalPath"
+    fi
+
     if $startSshd; then
         # Append users from arguments to final config
         for user in "$@"; do
@@ -70,61 +75,35 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         done
     fi
 
+    # Generate unique ssh keys for this container, if needed
+    if [ e "$aciHostkeysPath" ]; then
+        cp "$aciHostkeysPath"/* /etc/ssh/*
+    fi
+
+    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
+        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
+    fi
+    
+    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+        ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
+    fi
+
+    if [ ! -f "$aciHostkeysPath/ssh_host_rsa_key" ]; then
+        cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath"
+        log "copied rsa hostkey to $aciHostKeysPath"
+    fi
+
+
     # Check that we have users in config
     if [[ -f "$userConfFinalPath" ]] && [[ "$(wc -l < "$userConfFinalPath")" -gt 0 ]]; then
         # Import users from final conf file
         while IFS= read -r user || [[ -n "$user" ]]; do
-            create-sftp-user "$user"
+            "create-sftp-user" "$user"
         done < "$userConfFinalPath"
     elif $startSshd; then
         log "FATAL: No users provided!"
         exit 3
     fi
-
-    # Generate unique ssh keys for this container, if needed
-    hostkeypath=/etc/ssh
-    aci_ed25519_hostkey=$acipersistPath/hostkeys/ssh_host_ed25519_key
-    rsa_hostkey=$acipersistPath/hostkeys/ssh_host_rsa_key
-    
-    if [[ ! -f $hostkeypath/ssh_host_ed25519_key ]]; then
-        if [[ -f "$aci_ed25519_hostkey" ]]; then
-            log "found $aci_ed25519_hostkey"
-            cp -f "$aci_ed25519_hostkey" $hostkeypath/ssh_host_ed25519_key && chmod 600 $hostkeypath/ssh_host_ed25519_key && log "copied and owned $aci_ed25519_hostkey to /etc/ssh"
-            log "generating missing public key"
-            ssh-keygen -y -f $hostkeypath/ssh_host_ed25519_key > $hostkeypath/ssh_host_ed25519_key.pub
-            chown 644 $hostkeypath/ssh_host_ed25519_key.pub
-            log "Fingerprint: $(ssh-keygen -l -f $hostkeypath/ssh_host_ed25519_key -E md5)"
-        else
-            log "couldn't find $aci_ed25519_hostkey, generating new key"
-            ssh-keygen -t ed25519 -f $hostkeypath/ssh_host_ed25519_key -N '' -E md5
-            if [[ -e "$acipersistPath" ]]; then
-                cp $hostkeypath/ssh_host_ed25519_key "$aci_ed25519_hostkey" && log "copied ed25519 hostkey to $aci_ed25519_hostkey" 
-            fi
-        fi
-    fi
-
-    if [[ ! -f $hostkeypath/ssh_host_rsa_key ]]; then
-        if [[ -f "$rsa_hostkey" ]]; then
-            log "found $rsa_hostkey"
-            cp "$rsa_hostkey" $hostkeypath/ssh_host_rsa_key
-            chmod 600 $hostkeypath/ssh_host_rsa_key
-            log "copied $rsa_hostkey to /etc/ssh"
-            log "Generating missing public key"
-            ssh-keygen -y -f $hostkeypath/ssh_host_rsa_key > $hostkeypath/ssh_host_rsa_key.pub
-            chown 644 $hostkeypath/ssh_host_rsa_key.pub
-            log "Fingerprint: $(ssh-keygen -l -f $hostkeypath/ssh_host_rsa_key -E md5)"
-        else
-            log "couldn't find $rsa_hostkey, generating new key"
-            ssh-keygen -t rsa -b 4096 -f $hostkeypath/ssh_host_rsa_key -N '' -E md5
-
-            if [[ -e "$acipersistPath" ]]; then
-                cp $hostkeypath/ssh_host_ed25519_key "$rsa_hostkey" && log "copied rsa hostkey to $rsa_hostkey"
-            fi
-        fi
-    fi
-
-    # ToDo: combine ssh_host_*_key generation in loop
-    #   for higher key compatibility
 fi
 
 # Source custom scripts, if any
