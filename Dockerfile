@@ -1,9 +1,6 @@
-# mauwii's mod of atmoz/sftp
-# origin by Adrian Dvergsdal [atmoz.net]
-
-FROM debian:buster
-
-VOLUME  [ "/mnt/acipersist" ]
+FROM ubuntu
+LABEL tag="mauwii/sftp:ubuntu"
+# originally by Adrian Dvergsdal [atmoz.net]
 
 # Steps done in one RUN layer:
 # - Install packages
@@ -13,13 +10,17 @@ RUN apt-get update && \
     apt-get -y install openssh-server && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/run/sshd && \
+    mkdir -p /var/run/sftp/ && \
     rm -f /etc/ssh/ssh_host_*key*
 
-COPY files/sshd_config /etc/ssh/
-COPY files/create-sftp-user /usr/local/bin/
-COPY files/entrypoint /
-COPY files/copy-hostkeys /mnt/acipersist/scripts/copy-hostkeys.sh
+
+VOLUME [ "/acipersist" ]
+ADD acipersist/sshd_config /etc/ssh/sshd_config
+ADD acipersist/create-sftp-user /usr/local/bin/
+ADD acipersist/entrypoint /
+ADD acipersist/sftp-users.conf /etc/sftp/users.conf
+
 
 EXPOSE 22
 
-ENTRYPOINT /entrypoint
+ENTRYPOINT ["/entrypoint"]

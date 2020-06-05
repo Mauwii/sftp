@@ -130,16 +130,16 @@ ssh-keygen -t rsa -b 4096 -f ssh_host_rsa_key < /dev/null
 
 ### Execute custom scripts or applications
 
-Put your programs in `/mnt/acipersist/sshd/` and it will automatically run when the container starts.
+Put your programs in `/acipersist/sshd/` and it will automatically run when the container starts.
 See next section for an example.
 
 ### Bindmount dirs from another location
 
-If you are using `--volumes-from` or just want to make a custom directory available in user's home directory, you can add a script to `/mnt/acipersist/sshd/` that bindmounts after container starts.
+If you are using `--volumes-from` or just want to make a custom directory available in user's home directory, you can add a script to `/acipersist/sshd/` that bindmounts after container starts.
 
 ```bash
 #!/bin/bash
-# File mounted as: /mnt/acipersist/sshd/bindmount.sh
+# File mounted as: /acipersist/sshd/bindmount.sh
 # Just an example (make your own)
 
 function bindmount() {

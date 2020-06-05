@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  webapp:
+    volumes: 
+      - "/acipersist"
+    ports:
+      - "2234:22"
+    build:
+      context: .
+      dockerfile: ./Dockerfile

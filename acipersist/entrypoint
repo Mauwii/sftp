@@ -8,12 +8,13 @@ reArgsMaybe="^[^:[:space:]]+:.*$" # Smallest indication of attempt to use argume
 reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 
 # Paths
+acipersistPath="/acipersist"
+aciUserConf="$(echo "$acipersistPath")/sftp-users.conf"
+aciHostkeysPath="$(echo "$acipersistPath")/hostkeys"
 userConfPath="/etc/sftp/users.conf"
 userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
-acipersistPath="/mnt/acipersist"
-aciHostkeysPath="$acipersistPath/hostkeys"
-acipersistRepo="/mnt/sftp-aci"
+
 
 function log() {
     echo "[$0] [$(date)] $*" >&2
@@ -26,38 +27,16 @@ else
     startSshd=false
 fi
 
-# link repositorys AciPersist folder if repo is cloned into /mnt/sftp-aci-repo
-if [[ ! -e "$acipersistPath" ]]; then
-    log "missing $acipersistPath, trying to link it from $acipersistRepo"
-    if [[ -e "$acipersistRepo/AciPersist" ]]; then
-        # acipersistPath="$acipersistRepo/AciPersist"
-        # log "changing acipersistPath to $acipersistPath"
-        ln -s "$acipersistRepo/AciPersist" "$acipersistPath"
-        log "linked $acipersistRepo/AciPersist to $acipersistPath"
-    else
-        log "repo not found at $acipersistRepo"
-        # Todo - clone git repo???
-    fi
-fi
-
-
-
-# Backward compatibility with legacy config path
-if [[ ! -f "$userConfPath" ]] && [[ -f "$userConfPathLegacy" ]]; then
-    mkdir -p "$(dirname $userConfPath)"
-    ln -s "$userConfPathLegacy" "$userConfPath"
-fi
-
 # Create users only on first run
 if [[ ! -f "$userConfFinalPath" ]]; then
     mkdir -p "$(dirname $userConfFinalPath)"
-    if [[ -f "$aciuserconf" ]]; then
+    if [[ -f "$aciUserConf" ]]; then
         # Append mounted config to final config
-        grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
+        grep -v -E "$reArgSkip" < "$aciUserConf" > "$userConfFinalPath"
     fi
 
-    if [[ -e /mnt/acipersist/sftp/users.conf ]]; then
-        grep -v -E "$reArgSkip" < /mnt/acipersist/sftp/users.conf > "$userConfFinalPath"
+    if [[ -e $aciUserConf ]]; then
+        grep -v -E "$reArgSkip" < $aciUserConf > "$userConfFinalPath"
     fi
 
     if $startSshd; then
@@ -76,24 +55,31 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     fi
 
     # Generate unique ssh keys for this container, if needed
-    if [ e "$aciHostkeysPath" ]; then
-        cp "$aciHostkeysPath"/* /etc/ssh/*
+    if [ -f "$aciHostkeysPath/ssh_host_ed25519_key" ]; then
+        cp "$aciHostkeysPath/ssh_host_ed25519_key" /etc/ssh/
+        chmod 600 "/etc/ssh/ssh_host_ed25519_key"
+        log "copied ed25519 hostkey from $aciHostkeysPath"
     fi
-
+    if [ -f "$aciHostkeysPath/ssh_host_rsa_key" ]; then
+        cp "$aciHostkeysPath/ssh_host_rsa_key" /etc/ssh/
+        chmod 600 "/etc/ssh/ssh_host_rsa_key"
+        log "copied ed25519 hostkey from $aciHostkeysPath"
+    fi
+    if [ ! -d $aciHostkeysPath ]; then
+        mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
+    fi
+    if [ ! -d /etc/ssh ]; then
+        mkdir -p /etc/ssh && log "created /etc/ssh"
+    fi
     if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
+        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5 < /dev/null
+        cp /etc/ssh/ssh_host_ed25519_key "$aciHostkeysPath/ssh_host_ed25519_key"
     fi
-    
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-        ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
+           ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5 < /dev/null
+           cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath"/ssh_host_rsa_key
     fi
-
-    if [ ! -f "$aciHostkeysPath/ssh_host_rsa_key" ]; then
-        cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath"
-        log "copied rsa hostkey to $aciHostKeysPath"
-    fi
-
-
+   
     # Check that we have users in config
     if [[ -f "$userConfFinalPath" ]] && [[ "$(wc -l < "$userConfFinalPath")" -gt 0 ]]; then
         # Import users from final conf file
