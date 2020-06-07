@@ -1,11 +1,6 @@
 version: "3.8"
 services:
   sftp-aci:
-    volumes: 
-      - /path/to/acipersist:/acipersist
     ports:
       - "2222:2222"
-    build:
-      dockerfile: ./Dockerfile
-      context: .
     image: "mauwii/sftp:debian"
