@@ -9,8 +9,9 @@ reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 
 # Paths
 acipersistPath="/acipersist"
-aciUserConf="$(echo "$acipersistPath")/sftp-users.conf"
-aciHostkeysPath="$(echo "$acipersistPath")/hostkeys"
+aciUserConf="$acipersistPath/users.conf"
+aciHostkeysPath="$acipersistPath/hostkeys"
+aciSshdConfig="$acipersistPath/sshd_config"
 userConfPath="/etc/sftp/users.conf"
 userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
@@ -27,16 +28,29 @@ else
     startSshd=false
 fi
 
+# Backward compatibility with legacy config path
+if [ ! -f "$userConfPath" ] && [ -f "$userConfPathLegacy" ]; then
+    log "found legacy config path at $userConfPathLegacy"
+    mkdir -p "$(dirname $userConfPath)"
+    ln -s "$userConfPathLegacy" "$userConfPath"
+    log "linked legacy config path to $userConfPath"
+fi
+
 # Create users only on first run
 if [[ ! -f "$userConfFinalPath" ]]; then
     mkdir -p "$(dirname $userConfFinalPath)"
-    if [[ -f "$aciUserConf" ]]; then
+    log "Looks like firstrun, created $userConfFinalPath"
+
+    if [ -f "$userConfPath" ]; then
+        log "found $userConfPath, appending users to $userConfFinalPath"
         # Append mounted config to final config
-        grep -v -E "$reArgSkip" < "$aciUserConf" > "$userConfFinalPath"
+        grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
     fi
 
-    if [[ -e $aciUserConf ]]; then
-        grep -v -E "$reArgSkip" < $aciUserConf > "$userConfFinalPath"
+    if [[ -f "$aciUserConf" ]]; then
+        log "found $aciUserConf, adding to $userConfFinalPath"
+        # Append mounted config to final config
+        grep -v -E "$reArgSkip" < "$aciUserConf" > "$userConfFinalPath"
     fi
 
     if $startSshd; then
@@ -44,6 +58,13 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         for user in "$@"; do
             echo "$user" >> "$userConfFinalPath"
         done
+
+        # copy SSHD Config from /acipersist if exists
+        if [ -f "$aciSshdConfig" ] ; then
+            rm /etc/ssh/sshd_config
+            cp "$aciSshdConfig" /etc/ssh/sshd_config
+            log "using custom sshd_config from $aciSshdConfig"
+        fi
     fi
 
     if [[ -n "$SFTP_USERS" ]]; then
@@ -54,32 +75,6 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         done
     fi
 
-    # Generate unique ssh keys for this container, if needed
-    if [ -f "$aciHostkeysPath/ssh_host_ed25519_key" ]; then
-        cp "$aciHostkeysPath/ssh_host_ed25519_key" /etc/ssh/
-        chmod 600 "/etc/ssh/ssh_host_ed25519_key"
-        log "copied ed25519 hostkey from $aciHostkeysPath"
-    fi
-    if [ -f "$aciHostkeysPath/ssh_host_rsa_key" ]; then
-        cp "$aciHostkeysPath/ssh_host_rsa_key" /etc/ssh/
-        chmod 600 "/etc/ssh/ssh_host_rsa_key"
-        log "copied ed25519 hostkey from $aciHostkeysPath"
-    fi
-    if [ ! -d $aciHostkeysPath ]; then
-        mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
-    fi
-    if [ ! -d /etc/ssh ]; then
-        mkdir -p /etc/ssh && log "created /etc/ssh"
-    fi
-    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5 < /dev/null
-        cp /etc/ssh/ssh_host_ed25519_key "$aciHostkeysPath/ssh_host_ed25519_key"
-    fi
-    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-           ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5 < /dev/null
-           cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath"/ssh_host_rsa_key
-    fi
-   
     # Check that we have users in config
     if [[ -f "$userConfFinalPath" ]] && [[ "$(wc -l < "$userConfFinalPath")" -gt 0 ]]; then
         # Import users from final conf file
@@ -89,6 +84,33 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     elif $startSshd; then
         log "FATAL: No users provided!"
         exit 3
+    fi
+
+    # Generate unique ssh keys for this container, if needed
+
+    if [ ! -d $aciHostkeysPath ]; then
+        mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
+    else
+        hostkeys=$(ls $aciHostkeysPath/ssh_host_*_key)
+        for key in $hostkeys; do
+            cp $key /etc/ssh/
+            chown 0:0 $key
+            chmod 600 $key
+            log "copied $key to /etc/ssh"
+        done
+    fi
+    
+    if [ ! -d /etc/ssh ]; then
+        mkdir -p /etc/ssh && log "created /etc/ssh"
+    fi
+    
+    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
+        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5 < /dev/null
+        cp /etc/ssh/ssh_host_ed25519_key "$aciHostkeysPath"/ssh_host_ed25519_key
+    fi
+    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+           ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5 < /dev/null
+           cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath"/ssh_host_rsa_key
     fi
 fi
 

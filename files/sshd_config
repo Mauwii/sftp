@@ -18,5 +18,8 @@ Subsystem sftp internal-sftp
 ForceCommand internal-sftp
 ChrootDirectory %h
 
+# Option to change SSH's Port
+Port 2222
+
 # Enable this for more logs
-LogLevel VERBOSE
+# LogLevel VERBOSE
