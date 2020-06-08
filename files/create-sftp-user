@@ -104,15 +104,19 @@ if [ -d "$aciUserKeypubs/$user" ] ; then
         echo '' > "/home/$user/.ssh/authorized_keys"
         log "created authorized_keys"
     fi
-    publickeys="$(ls $aciUserKeypubs/$user/*.pub)"
-    for publickey in $publickeys ; do
-        cat $publickey >> "/home/$user/.ssh/authorized_keys"
-        log "added $publickey to authorized_keys"
-    done
+    if [ ! -e "$aciUserKeypubs/$user" ] ; then
+        publickeys="$(ls $aciUserKeypubs/$user/*.pub)"
+        for publickey in $publickeys ; do
+            cat $publickey >> "/home/$user/.ssh/authorized_keys"
+            log "added $publickey to authorized_keys"
+        done
+    fi
+    if [ -f /home/$user/.ssh/authorized_keys ] ; then
     cat "/home/$user/.ssh/authorized_keys" > "/home/$user/.ssh/authorized_keys" < /dev/null
     chown "$uid" "/home/$user/.ssh/authorized_keys"
     chmod 600 "/home/$user/.ssh/authorized_keys"
     log "owned /home/$user/.ssh/authorized_keys"
+    fi
 else
     log "couldn't find $aciUserKeypubs/$user"
 fi
