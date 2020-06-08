@@ -59,12 +59,16 @@ if [[ ! -f "$userConfFinalPath" ]]; then
             echo "$user" >> "$userConfFinalPath"
         done
 
-        # copy SSHD Config from /acipersist if exists
+        # copy SSHD Config from /acipersist if exists, if doesnt exist create it from git's defaultconfig
         if [ -f "$aciSshdConfig" ] ; then
             rm /etc/ssh/sshd_config
             cp "$aciSshdConfig" /etc/ssh/sshd_config
-            log "using custom sshd_config from $aciSshdConfig"
+            log "copied sshd_config from $aciSshdConfig"
+        elif [ ! -f "$aciSshdConfig" ] && [ -d "$acipersistPath" ] ; then
+            cp /etc/ssh/sshd_config "$aciSshdConfig"
+            log "copied sshd defaultconfig to $aciSshdConfig"
         fi
+
     fi
 
     if [[ -n "$SFTP_USERS" ]]; then
@@ -96,10 +100,10 @@ if [[ ! -f "$userConfFinalPath" ]]; then
             cp $aciHostkeysPath/$key /etc/ssh/$key
             chown 0:0 "/etc/ssh/$key"
             chmod 600 "/etc/ssh/$key"
-            log "copied $key to /etc/ssh"
+            log "copied $key from $aciHostkeysPath to /etc/ssh"
         done
     fi
-    
+
     if [ ! -d /etc/ssh ]; then
         mkdir -p /etc/ssh && log "created /etc/ssh"
     fi
