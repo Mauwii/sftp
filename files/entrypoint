@@ -91,11 +91,11 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     if [ ! -d $aciHostkeysPath ]; then
         mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
     else
-        hostkeys=$(ls $aciHostkeysPath/ssh_host_*_key)
+        hostkeys=$(ls $aciHostkeysPath | grep _key)
         for key in $hostkeys; do
-            cp $key /etc/ssh/
-            chown 0:0 $key
-            chmod 600 $key
+            cp $aciHostkeysPath/$key /etc/ssh/$key
+            chown 0:0 "/etc/ssh/$key"
+            chmod 600 "/etc/ssh/$key"
             log "copied $key to /etc/ssh"
         done
     fi

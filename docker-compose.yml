@@ -3,4 +3,4 @@ services:
   sftp-aci:
     ports:
       - "2222:2222"
-    image: "mauwii/sftp:debian"
+    image: "mauwii/sftp:acipersist"
