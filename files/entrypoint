@@ -92,19 +92,33 @@ if [[ ! -f "$userConfFinalPath" ]]; then
 
     # Generate unique ssh keys for this container, if needed
 
-    if [ ! -d $aciHostkeysPath ]; then
+    if [ ! -d $aciHostkeysPath ] ; then
         mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
     fi
-    
-    if [ ! -z "$(ls $aciHostkeysPath/ssh_host_*_key)" ]; then
-        hostkeys=$(ls $aciHostkeysPath | grep _key)
-        for key in $hostkeys; do
-            cp $aciHostkeysPath/$key /etc/ssh/$key
-            chown 0:0 "/etc/ssh/$key"
-            chmod 600 "/etc/ssh/$key"
-            log "copied $key from $aciHostkeysPath to /etc/ssh"
-            log "$(ssh-keygen -l -E md5 -f /etc/ssh/$key)"
-        done
+
+    # pubkeys=$(echo "$(ls /etc/ssh | grep _key.pub)")
+    # for key in $pubkeys; do
+    #         rm /etc/ssh/$key
+    #         log removedd $key
+    # done
+
+    if [ ! -z "$(ls $aciHostkeysPath/ssh_host_*_key)" ] ; then
+        hostkeys="$(ls $aciHostkeysPath | grep _key)"
+        if [[ $hostkeys != *.pub ]] ; then
+            for key in $hostkeys; do
+                log "found $key"
+                cat $aciHostkeysPath/$key > /etc/ssh/$key < /dev/null
+                chown 0:0 "/etc/ssh/$key"
+                chmod 600 "/etc/ssh/$key"
+                log "copied $key from $aciHostkeysPath to /etc/ssh"
+                if [ -f "/etc/ssh/$key.pub" ] ; then
+                    rm "/etc/ssh/$key.pub"
+                    log "removed /etc/ssh/$key.pub"
+                fi
+                ssh-keygen -y -f /etc/ssh/$key > /etc/ssh/$key.pub < /dev/null
+                log $(ssh-keygen -l -E md5 -f /etc/ssh/$key.pub)
+            done
+        fi
     fi
 
     if [ ! -d /etc/ssh ]; then
@@ -112,12 +126,14 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     fi
     
     if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5 < /dev/null
-        cp /etc/ssh/ssh_host_ed25519_key "$aciHostkeysPath/ssh_host_ed25519_key"
+        log "couldnt find /etc/ssh/ssh_host_ed25519_key"
+        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
+        cat /etc/ssh/ssh_host_ed25519_key > "$aciHostkeysPath/ssh_host_ed25519_key" < /dev/null
     fi
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-           ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5 < /dev/null
-           cp /etc/ssh/ssh_host_rsa_key "$aciHostkeysPath/ssh_host_rsa_key"
+        log "couldnt find /etc/ssh/ssh_host_rsa_key"
+        ssh-keygen -t rsa -b 2048 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
+        cat /etc/ssh/ssh_host_rsa_key > "$aciHostkeysPath/ssh_host_rsa_key" < /dev/null
     fi
 fi
 

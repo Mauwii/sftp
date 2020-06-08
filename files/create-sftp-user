@@ -109,8 +109,10 @@ if [ -d "$aciUserKeypubs/$user" ] ; then
         cat $publickey >> "/home/$user/.ssh/authorized_keys"
         log "added $publickey to authorized_keys"
     done
+    cat "/home/$user/.ssh/authorized_keys" > "/home/$user/.ssh/authorized_keys" < /dev/null
     chown "$uid" "/home/$user/.ssh/authorized_keys"
     chmod 600 "/home/$user/.ssh/authorized_keys"
+    log "owned /home/$user/.ssh/authorized_keys"
 else
     log "couldn't find $aciUserKeypubs/$user"
 fi
