@@ -18,7 +18,7 @@ userConfFinalPath="/var/run/sftp/users.conf"
 
 
 function log() {
-    echo "[$0] [$(date)] $*" >&2
+    echo "[$(date)][$0] $*" >&2
 }
 
 # Allow running other programs, e.g. bash
