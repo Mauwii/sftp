@@ -1,14 +1,14 @@
 # mod of atmoz/sftp by Adrian Dvergsdal [atmoz.net]
-FROM debian
+FROM alpine
 LABEL tag="mauwii/sftp:debian"
 
 # Steps done in one RUN layer:
 # - Install packages
 # - OpenSSH needs /var/run/sshd to run
 # - Remove generic host keys, entrypoint generates unique keys
-RUN apt-get update && \
-    apt-get -y install openssh-server && \
-    rm -rf /var/lib/apt/lists/* && \
+RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    apk add --no-cache bash shadow@community openssh openssh-sftp-server && \
+    sed -i 's/GROUP=1000/GROUP=100/' /etc/default/useradd && \
     mkdir -p /var/run/sshd && \
     rm -f /etc/ssh/ssh_host_*key*
 
