@@ -2,6 +2,8 @@
 FROM alpine
 LABEL tag="mauwii/sftp:debian"
 
+VOLUME [ "/acipersist" ]
+
 # Steps done in one RUN layer:
 # - Install packages
 # - OpenSSH needs /var/run/sshd to run
