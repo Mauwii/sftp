@@ -1,6 +1,6 @@
 # mod of atmoz/sftp by Adrian Dvergsdal [atmoz.net]
 FROM alpine
-LABEL tag="mauwii/sftp:debian"
+LABEL tag="mauwii/sftp:alpinepersist"
 
 VOLUME [ "/acipersist" ]
 
