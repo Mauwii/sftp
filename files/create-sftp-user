@@ -97,6 +97,9 @@ fi
 
 # Add SSH keys to authorized_keys with valid permissions
 aciUserKeypubs="/acipersist/userkeypubs"
+mkdir -p /home/$user/.ssh
+chown "$uid:users" "/home/$user/.ssh"
+
 if [ -d "$aciUserKeypubs/$user" ] ; then
     log "found $aciUserKeypubs/$user"
     if [ ! -f "/home/$user/.ssh/authorized_keys" ] ; then
@@ -113,9 +116,6 @@ if [ -d "$aciUserKeypubs/$user" ] ; then
     fi
     if [ -f /home/$user/.ssh/authorized_keys ] ; then
     cat "/home/$user/.ssh/authorized_keys" > "/home/$user/.ssh/authorized_keys" < /dev/null
-    chown "$uid" "/home/$user/.ssh/authorized_keys"
-    chmod 600 "/home/$user/.ssh/authorized_keys"
-    log "owned /home/$user/.ssh/authorized_keys"
     fi
 else
     log "couldn't find $aciUserKeypubs/$user"
