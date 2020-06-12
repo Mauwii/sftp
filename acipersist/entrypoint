@@ -58,17 +58,6 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         for user in "$@"; do
             echo "$user" >> "$userConfFinalPath"
         done
-
-        # copy SSHD Config from /acipersist if exists, if doesnt exist create it from git's defaultconfig
-        if [ -f "$aciSshdConfig" ] ; then
-            rm /etc/ssh/sshd_config
-            cp "$aciSshdConfig" /etc/ssh/sshd_config
-            log "copied sshd_config from $aciSshdConfig"
-        elif [ ! -f "$aciSshdConfig" ] && [ -d "$acipersistPath" ] ; then
-            cp /etc/ssh/sshd_config "$aciSshdConfig"
-            log "copied sshd defaultconfig to $aciSshdConfig"
-        fi
-
     fi
 
     if [[ -n "$SFTP_USERS" ]]; then
@@ -83,63 +72,64 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     if [[ -f "$userConfFinalPath" ]] && [[ "$(wc -l < "$userConfFinalPath")" -gt 0 ]]; then
         # Import users from final conf file
         while IFS= read -r user || [[ -n "$user" ]]; do
-            "create-sftp-user" "$user"
+            create-sftp-user "$user"
         done < "$userConfFinalPath"
     elif $startSshd; then
         log "FATAL: No users provided!"
         exit 3
     fi
-
-    # Generate unique ssh keys for this container, if needed
-
-    if [ ! -d $aciHostkeysPath ] ; then
-        mkdir -p $aciHostkeysPath && log "created $aciHostkeysPath"
+    
+    aciHostkeysPath="$acipersistPath/hostkeys"
+    if [ -e "$aciHostkeysPath" ] ; then
+        # for f in "$(cd $aciHostkeysPath && ls *_key)"; do
+        #     log "line 85: found $f"
+        #     acihostkey="$f"
+        #     hostkey="/etc/ssh/$f"
+        #     cp -f "$f" /etc/ssh/
+        # done
+        # for f in /etc/ssh/*_key; do
+            cp $aciHostkeysPath/*_key /etc/ssh/
+            chown root:root /etc/ssh/*_key
+            chmod 600 /etc/ssh/*_key
+            log "copied and owned keys in $aciHostkeysPath"
+        # done        
+        # chown -R root:root /etc/ssh
+        # chmod 600 /etc/ssh/*_key
+        # log "owned all keys in /etc/ssh/*_key"
+        # unset key
+        # unset acihostkey
+        # unset hostkey
+    else
+        log "couldn't find $aciHostkeysPath"
     fi
 
-    # pubkeys=$(echo "$(ls /etc/ssh | grep _key.pub)")
-    # for key in $pubkeys; do
-    #         rm /etc/ssh/$key
-    #         log removedd $key
-    # done
+    if [ ! -e "$aciHostkeysPath" ]; then
+        mkdir -p "$aciHostkeysPath"
+        log "created $aciHostkeysPath"
+    fi
 
-    if [ ! -z "$(ls $aciHostkeysPath/ssh_host_*_key)" ] ; then
-        hostkeys="$(ls $aciHostkeysPath | grep _key)"
-        if [[ $hostkeys != *.pub ]] ; then
-            for key in $hostkeys; do
-                log "found $key"
-                cat $aciHostkeysPath/$key > /etc/ssh/$key < /dev/null
-                chown 0:0 "/etc/ssh/$key"
-                chmod 600 "/etc/ssh/$key"
-                log "copied $key from $aciHostkeysPath to /etc/ssh"
-                if [ -f "/etc/ssh/$key.pub" ] ; then
-                    rm "/etc/ssh/$key.pub"
-                    log "removed /etc/ssh/$key.pub"
-                fi
-                ssh-keygen -y -f /etc/ssh/$key > /etc/ssh/$key.pub < /dev/null
-                log $(ssh-keygen -l -E md5 -f /etc/ssh/$key.pub)
-            done
+    if [ ! -f /etc/ssh/ssh_host_ed25519_key ] ; then
+        log "couldnt find /etc/ssh/ssh_host_ed25519_key"
+        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
+        if [ ! -e "$aciHostkeysPath/ssh_host_ed25519_key" ]; then
+            cp /etc/ssh/ssh_host_ed25519_key "$aciHostkeysPath"/ssh_host_ed25519_key
         fi
     fi
 
-    if [ ! -d /etc/ssh ]; then
-        mkdir -p /etc/ssh && log "created /etc/ssh"
-    fi
-    
-    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-        log "couldnt find /etc/ssh/ssh_host_ed25519_key"
-        ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' -E md5
-        cat /etc/ssh/ssh_host_ed25519_key > "$aciHostkeysPath/ssh_host_ed25519_key" < /dev/null
-    fi
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
         log "couldnt find /etc/ssh/ssh_host_rsa_key"
         ssh-keygen -t rsa -b 2048 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
-        cat /etc/ssh/ssh_host_rsa_key > "$aciHostkeysPath/ssh_host_rsa_key" < /dev/null
+        if [ ! -e "$aciHostkeysPath"/ssh_host_rsa_key ]; then
+            cat /etc/ssh/ssh_host_rsa_key > "$aciHostkeysPath"/ssh_host_rsa_key
+        fi
     fi
+
 fi
 
+
 # Source custom scripts, if any
-if [[ -d $acipersistPath/scripts ]]; then
-    for f in $acipersistPath/scripts/*.sh ; do
+if [[ -d "$acipersistPath/scripts" ]]; then
+    for f in "$acipersistPath"/scripts/*.sh ; do
         if [[ -x "$f" ]]; then
             log "Running $f ..."
             $f
@@ -148,6 +138,25 @@ if [[ -d $acipersistPath/scripts ]]; then
         fi
     done
     unset f
+fi
+
+
+# copy sshd_config from /acipersist if exists, if doesnt exist copy it from /etc/ssh
+if [[ -f "$aciSshdConfig" ]] && [[ ! "$aciSshdConfig" -ef /etc/ssh/sshd_config ]] ; then
+    rm /etc/ssh/sshd_config
+    cp "$aciSshdConfig" /etc/ssh/sshd_config
+    log "copied sshd_config from $aciSshdConfig"
+elif [[ -e "$acipersistPath" ]] &&  [[ ! -f "$aciSshdConfig" ]]; then
+    cp /etc/ssh/sshd_config "$aciSshdConfig"
+    log "copied sshd defaultconfig to $aciSshdConfig"
+fi
+
+# Generate public keys for this container
+if [[ ! -f "/etc/ssh/"ssh_host_*_key.pub ]] ; then
+    for f in /etc/ssh/*_key; do
+        ssh-keygen -y -f $f > $f.pub
+        log "generated $f.pub"
+    done
 fi
 
 if $startSshd; then

@@ -1,6 +1,9 @@
 version: "3.8"
 services:
   sftp-aci:
+    image: mauwii/sftp:acipersist
     ports:
-      - "2222:2222"
-    image: "mauwii/sftp:acipersist"
+      - 2222:2222/tcp
+    build:
+      context: .
+      dockerfile: Dockerfile

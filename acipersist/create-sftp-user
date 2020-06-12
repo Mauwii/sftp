@@ -12,8 +12,10 @@ reGid='[[:digit:]]*'
 reDir='[^:]*'
 #reArgs="^($reUser)(:$rePass)(:e)?(:$reUid)?(:$reGid)?(:$reDir)?$"
 
+authorizedKeysFile="/home/$user/.ssh/authorized_keys"
+
 function log() {
-    echo "[$(date)][$0] $*" >&2
+    echo "[$(date)][$0] $*"
 }
 
 function validateArg() {
@@ -55,6 +57,7 @@ fi
 
 if [ -n "$uid" ]; then
     useraddOptions+=(--non-unique --uid "$uid")
+    log "Generated uid $uid"
 fi
 
 if [ -n "$gid" ]; then
@@ -66,7 +69,7 @@ if [ -n "$gid" ]; then
 fi
 
 useradd "${useraddOptions[@]}" "$user"
-mkdir -p "/home/$user"
+mkdir -p "/home/$user"/.ssh
 chown root:root "/home/$user"
 chmod 755 "/home/$user"
 
@@ -78,6 +81,16 @@ if [ -n "$pass" ]; then
     echo "$user:$pass" | chpasswd $chpasswdOptions
 else
     usermod -p "*" "$user" # disabled password
+fi
+
+# Add SSH keys to authorized_keys
+if [ -d "/home/$user/.ssh/keys" ]; then
+    for publickey in "/home/$user/.ssh/keys"/*; do
+        cat "$publickey" >> "/home/$user/.ssh/authorized_keys"
+        log "copied $publickey"
+    done
+else
+    log "could not find /home/$user/.ssh/keys"
 fi
 
 # Make sure dirs exists
@@ -95,28 +108,25 @@ if [ -n "$dir" ]; then
     done
 fi
 
-# Add SSH keys to authorized_keys with valid permissions
-aciUserKeypubs="/acipersist/userkeypubs"
-if [ -d "$aciUserKeypubs/$user" ] ; then
-    log "found $aciUserKeypubs/$user"
-    if [ ! -f "/home/$user/.ssh/authorized_keys" ] ; then
-        mkdir -p "/home/$user/.ssh/"
-        echo '' > "/home/$user/.ssh/authorized_keys"
-        log "created authorized_keys"
+aciPersistPath="/acipersist"
+aciUserkeypubs="$acipersist/userkeypubs/$user"
+
+if [ -e "$aciUserkeypubs" ] ; then
+    log "found $aciUserkeypubs"
+    if [ -f "/home/$user/.ssh/authorized_keys" ] ; then
+    log "found authorized_keys"
     fi
-    if [ ! -e "$aciUserKeypubs/$user" ] ; then
-        publickeys="$(ls $aciUserKeypubs/$user/*.pub)"
-        for publickey in $publickeys ; do
-            cat $publickey >> "/home/$user/.ssh/authorized_keys"
-            log "added $publickey to authorized_keys"
-        done
-    fi
-    if [ -f /home/$user/.ssh/authorized_keys ] ; then
-    cat "/home/$user/.ssh/authorized_keys" > "/home/$user/.ssh/authorized_keys" < /dev/null
-    chown "$uid" "/home/$user/.ssh/authorized_keys"
-    chmod 600 "/home/$user/.ssh/authorized_keys"
-    log "owned /home/$user/.ssh/authorized_keys"
-    fi
+    for publickey in "$aciUserkeypubs"/*.pub ; do
+        cat $publickey >> "/home/$user/.ssh/authorized_keys"
+        log "added $publickey to authorized_keys"
+    done
+fi
+
+#own Authorized_keys
+if [ -f $authorized_keys ] ; then
+    chown -R "$uid" "/home/$user"/.ssh/
+    chmod -R 600 "/home/$user"/.ssh/
+    log "owned /home/$user/.ssh/ with uid $uid"
 else
-    log "couldn't find $aciUserKeypubs/$user"
+    "could not find /home/$user/.ssh"
 fi
