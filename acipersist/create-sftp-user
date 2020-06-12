@@ -68,8 +68,18 @@ if [ -n "$gid" ]; then
     useraddOptions+=(--gid "$gid")
 fi
 
+aciPersistPath="/acipersist"
+aciUserkeypubs="$(echo $acipersist/userkeypubs/$user)"
+log "aciuserkeypubs is $aciUserkeypubs"
+
 useradd "${useraddOptions[@]}" "$user"
-mkdir -p "/home/$user"/.ssh
+mkdir -p /home/"$user"/.ssh/keys
+if [ -d "$aciUserkeypubs" ] ; then
+    cp /acipersist/userkeypubs/"$user"/* /home/"$user"/.ssh/keys/
+    log "copied publickeys from "
+else
+    log "no publickeys in $aciUserkeypubs"
+fi
 chown root:root "/home/$user"
 chmod 755 "/home/$user"
 
@@ -84,13 +94,11 @@ else
 fi
 
 # Add SSH keys to authorized_keys
-if [ -d "/home/$user/.ssh/keys" ]; then
-    for publickey in "/home/$user/.ssh/keys"/*; do
+if [ -e "/home/$user"/.ssh/keys/*.pub ] ; then
+    for publickey in "/home/$user/.ssh/keys"/* ; do
         cat "$publickey" >> "/home/$user/.ssh/authorized_keys"
         log "copied $publickey"
     done
-else
-    log "could not find /home/$user/.ssh/keys"
 fi
 
 # Make sure dirs exists
@@ -108,24 +116,19 @@ if [ -n "$dir" ]; then
     done
 fi
 
-aciPersistPath="/acipersist"
-aciUserkeypubs="$acipersist/userkeypubs/$user"
-
-if [ -e "$aciUserkeypubs" ] ; then
+if [ -d "$aciUserkeypubs" ] ; then
     log "found $aciUserkeypubs"
-    if [ -f "/home/$user/.ssh/authorized_keys" ] ; then
-    log "found authorized_keys"
-    fi
-    for publickey in "$aciUserkeypubs"/*.pub ; do
-        cat $publickey >> "/home/$user/.ssh/authorized_keys"
-        log "added $publickey to authorized_keys"
+    for f in "$aciUserkeypubs"/* ; do
+        log "publickey is $f"
+        cp "$f" /home/"$user"/.ssh/authorized_keys
+        log "added $f to authorized_keys"
     done
 fi
 
 #own Authorized_keys
 if [ -f $authorized_keys ] ; then
-    chown -R "$uid" "/home/$user"/.ssh/
-    chmod -R 600 "/home/$user"/.ssh/
+    chown -R "$uid:100" /home/"$user"/.ssh/
+    chmod -R 600 /home/"$user"/.ssh/
     log "owned /home/$user/.ssh/ with uid $uid"
 else
     "could not find /home/$user/.ssh"

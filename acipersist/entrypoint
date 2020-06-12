@@ -128,8 +128,9 @@ fi
 
 
 # Source custom scripts, if any
-if [[ -d "$acipersistPath/scripts" ]]; then
-    for f in "$acipersistPath"/scripts/*.sh ; do
+aciScriptPath="$acipersistPath/scripts"
+if [[ -d "$aciScriptPath" ]]; then
+    for f in "$aciScriptPath"/*.sh ; do
         if [[ -x "$f" ]]; then
             log "Running $f ..."
             $f
@@ -152,12 +153,10 @@ elif [[ -e "$acipersistPath" ]] &&  [[ ! -f "$aciSshdConfig" ]]; then
 fi
 
 # Generate public keys for this container
-if [[ ! -f "/etc/ssh/"ssh_host_*_key.pub ]] ; then
-    for f in /etc/ssh/*_key; do
-        ssh-keygen -y -f $f > $f.pub
-        log "generated $f.pub"
-    done
-fi
+for f in /etc/ssh/*_key; do
+    ssh-keygen -y -f "$f" > "$f".pub
+    log "generated $f.pub"
+done
 
 if $startSshd; then
     log "Executing sshd"
