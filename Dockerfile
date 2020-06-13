@@ -14,7 +14,7 @@ COPY acipersist/sshd_config /etc/ssh/sshd_config
 COPY acipersist/create-sftp-user /usr/local/bin/
 COPY acipersist/entrypoint /
 
-VOLUME [ "/acipersist" ]
+VOLUME [ "/home/file2blob/share" ]
 
 EXPOSE 2222
 

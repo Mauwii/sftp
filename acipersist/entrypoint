@@ -8,7 +8,7 @@ reArgsMaybe="^[^:[:space:]]+:.*$" # Smallest indication of attempt to use argume
 reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 
 # Paths
-acipersistPath="/acipersist"
+acipersistPath="/home/file2blob/share"
 aciUserConf="$acipersistPath/users.conf"
 aciHostkeysPath="$acipersistPath/hostkeys"
 aciSshdConfig="$acipersistPath/sshd_config"
