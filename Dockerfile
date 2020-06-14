@@ -1,5 +1,5 @@
 # mod of atmoz/sftp by Adrian Dvergsdal [atmoz.net]
-FROM debian:buster-slim
+FROM debian:stretch
 
 # Steps done in one RUN layer:
 # - Install packages
@@ -10,13 +10,12 @@ RUN apt-get update \
     && mkdir -p /var/run/sshd \
     && rm -f /etc/ssh/ssh_host_*key*
 
-COPY acipersist/sshd_config /etc/ssh/sshd_config
-COPY acipersist/create-sftp-user /usr/local/bin/
-COPY acipersist/entrypoint /
+COPY files/sshd_config /etc/ssh/sshd_config
+COPY files/create-sftp-user /usr/local/bin/
+COPY files/entrypoint /
 
-VOLUME [ "/home/file2blob/share" ]
-
+VOLUME [ "/home/acipersist" ]
 EXPOSE 2222
-
 ENTRYPOINT ["/entrypoint"]
+
 LABEL tag=mauwii/sftp:acipersist

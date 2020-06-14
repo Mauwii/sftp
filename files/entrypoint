@@ -8,14 +8,19 @@ reArgsMaybe="^[^:[:space:]]+:.*$" # Smallest indication of attempt to use argume
 reArgSkip='^([[:blank:]]*#.*|[[:blank:]]*)$' # comment or empty line
 
 # Paths
-acipersistPath="/home/file2blob/share"
-aciUserConf="$acipersistPath/users.conf"
-aciHostkeysPath="$acipersistPath/hostkeys"
-aciSshdConfig="$acipersistPath/sshd_config"
-userConfPath="/etc/sftp/users.conf"
 userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
 
+if [[ -z "$acipersistPath" ]]; then
+    $acipersistPath="/home/acipersist"
+    log "found $acipersistPath"
+fi
+
+if [[ -f "$acipersistPath"/users.conf ]]; then
+    userConfPath="$acipersistPath"/users.conf
+else
+    userConfPath="/etc/sftp/users.conf"
+fi
 
 function log() {
     echo "[$(date)][$0] $*" >&2
@@ -47,12 +52,6 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         grep -v -E "$reArgSkip" < "$userConfPath" > "$userConfFinalPath"
     fi
 
-    if [[ -f "$aciUserConf" ]]; then
-        log "found $aciUserConf, adding to $userConfFinalPath"
-        # Append mounted config to final config
-        grep -v -E "$reArgSkip" < "$aciUserConf" > "$userConfFinalPath"
-    fi
-
     if $startSshd; then
         # Append users from arguments to final config
         for user in "$@"; do
@@ -79,26 +78,13 @@ if [[ ! -f "$userConfFinalPath" ]]; then
         exit 3
     fi
     
+    # get ssh host keys from acipersist, if not available generate
     aciHostkeysPath="$acipersistPath/hostkeys"
-    if [ -e "$aciHostkeysPath" ] ; then
-        # for f in "$(cd $aciHostkeysPath && ls *_key)"; do
-        #     log "line 85: found $f"
-        #     acihostkey="$f"
-        #     hostkey="/etc/ssh/$f"
-        #     cp -f "$f" /etc/ssh/
-        # done
-        # for f in /etc/ssh/*_key; do
+    if [ -d $aciHostkeysPath ] ; then
             cp $aciHostkeysPath/*_key /etc/ssh/
             chown root:root /etc/ssh/*_key
             chmod 600 /etc/ssh/*_key
             log "copied and owned keys in $aciHostkeysPath"
-        # done        
-        # chown -R root:root /etc/ssh
-        # chmod 600 /etc/ssh/*_key
-        # log "owned all keys in /etc/ssh/*_key"
-        # unset key
-        # unset acihostkey
-        # unset hostkey
     else
         log "couldn't find $aciHostkeysPath"
     fi
@@ -119,8 +105,9 @@ if [[ ! -f "$userConfFinalPath" ]]; then
     if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
         log "couldnt find /etc/ssh/ssh_host_rsa_key"
         ssh-keygen -t rsa -b 2048 -f /etc/ssh/ssh_host_rsa_key -N '' -E md5
-        if [ ! -e "$aciHostkeysPath"/ssh_host_rsa_key ]; then
+        if [ ! -e "$aciHostkeysPath/ssh_host_rsa_key" ]; then
             cat /etc/ssh/ssh_host_rsa_key > "$aciHostkeysPath"/ssh_host_rsa_key
+            log "added rsa hostkey to $aciHostkeysPath"
         fi
     fi
 
@@ -128,9 +115,8 @@ fi
 
 
 # Source custom scripts, if any
-aciScriptPath="$acipersistPath/scripts"
-if [[ -d "$aciScriptPath" ]]; then
-    for f in "$aciScriptPath"/*.sh ; do
+if [[ -d "$acipersistPath"/scripts ]] ; then
+    for f in "$acipersistPath"/scripts/*; do
         if [[ -x "$f" ]]; then
             log "Running $f ..."
             $f
@@ -142,14 +128,20 @@ if [[ -d "$aciScriptPath" ]]; then
 fi
 
 
-# copy sshd_config from /acipersist if exists, if doesnt exist copy it from /etc/ssh
+# copy sshd_config from /acipersist if exists, if doesnt exist copy it from /etc/ssh to /acipersist
+aciSshdConfig="$acipersistPath/sshd_config"
+
 if [[ -f "$aciSshdConfig" ]] && [[ ! "$aciSshdConfig" -ef /etc/ssh/sshd_config ]] ; then
     rm /etc/ssh/sshd_config
-    cp "$aciSshdConfig" /etc/ssh/sshd_config
+    cp "$aciSshdConfig" /etc/ssh/
     log "copied sshd_config from $aciSshdConfig"
 elif [[ -e "$acipersistPath" ]] &&  [[ ! -f "$aciSshdConfig" ]]; then
     cp /etc/ssh/sshd_config "$aciSshdConfig"
     log "copied sshd defaultconfig to $aciSshdConfig"
+elif [[ /etc/ssh/sshd_config -ot "$aciSshdConfig" ]] ; then
+    rm /etc/ssh/sshd_config
+    cp "$aciSshdConfig" /etc/ssh/
+    log "copied sshd config from $aciSshdConfig"
 fi
 
 # Generate public keys for this container

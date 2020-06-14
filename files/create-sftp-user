@@ -12,7 +12,10 @@ reGid='[[:digit:]]*'
 reDir='[^:]*'
 #reArgs="^($reUser)(:$rePass)(:e)?(:$reUid)?(:$reGid)?(:$reDir)?$"
 
-authorizedKeysFile="/home/$user/.ssh/authorized_keys"
+if [[ -z $acipersistPath ]]; then
+    acipersistPath="/home/acipersist"
+    log "set acipersistPath to $acipersistPath"
+fi
 
 function log() {
     echo "[$(date)][$0] $*"
@@ -68,18 +71,8 @@ if [ -n "$gid" ]; then
     useraddOptions+=(--gid "$gid")
 fi
 
-aciPersistPath="/home/file2blob/share"
-aciUserkeypubs=/home/file2blob/share/userkeypubs/$user
-log "aciuserkeypubs is $aciUserkeypubs"
-
 useradd "${useraddOptions[@]}" "$user"
-mkdir -p "/home/$user/.ssh/keys"
-if [[ -d "$aciUserkeypubs" ]] ; then
-    cp /home/file2blob/share/userkeypubs/"$user"/*.pub /home/"$user"/.ssh/keys/
-    log "copied keys of $user "
-else
-    log "no publickeys in $aciUserkeypubs"
-fi
+mkdir -p "/home/$user"
 chown root:root "/home/$user"
 chmod 755 "/home/$user"
 
@@ -93,12 +86,27 @@ else
     usermod -p "*" "$user" # disabled password
 fi
 
-# Add SSH keys to authorized_keys
-if [[ -f "/home/$user/.ssh/keys"/* ]]; then
-    for pubkey in "/home/$user/.ssh/keys"/*.pub ; do
-        cat "$pubkey" >> "/home/$user/.ssh"/authorized_keys
-        log "piped $pubkey to authorized_keys"
+# Add SSH keys to authorized_keys with valid permissions
+
+userAuthKeysPath="/home/$user/.ssh"
+userKeypubsPath="$userAuthKeysPath/keys"
+aciUserKeypubsPath="/home/acipersist/userkeypubs/$user"
+
+if [[ -e "$aciUserKeypubsPath" ]] ; then
+    mkdir -p /home/$user/.ssh/keys
+    log "copying public keys from $aciUserKeypubsPath"
+    cp "$aciUserKeypubsPath"/* "$userKeypubsPath"/
+else
+    log "no public keys for $user at $aciUserKeypubsPath"
+fi
+
+if [ -d "$userAuthKeysPath"/keys ]; then
+    for publickey in "$userKeypubsPath"/* ; do
+        log "adding $publickey to authorized_keys"
+        cat "$publickey" >> "$userAuthKeysPath"/authorized_keys
     done
+    chown "$uid" "$userAuthKeysPath/authorized_keys"
+    chmod 600 "$userAuthKeysPath/authorized_keys"
 fi
 
 # Make sure dirs exists
@@ -114,22 +122,4 @@ if [ -n "$dir" ]; then
             log "Directory already exists: $dirPath"
         fi
     done
-fi
-
-# if [ -d "$aciUserkeypubs" ] ; then
-#     publicKey="$(ls -a $aciUserkeypubs)"
-#     for f in "${publicKey}"; do
-#         log "publickey is $f"
-#         cat ${publickey} >> /home/$user/.ssh/authorized_keys
-#         log "added $f to authorized_keys"
-#     done
-# fi
-
-#own Authorized_keys
-if [ -f $authorized_keys ] ; then
-    chown -R "$uid:100" /home/"$user"/.ssh/
-    chmod -R 600 /home/"$user"/.ssh/
-    log "owned /home/$user/.ssh/ with uid $uid"
-else
-    "could not find /home/$user/.ssh"
 fi
