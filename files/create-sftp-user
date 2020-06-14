@@ -60,7 +60,6 @@ fi
 
 if [ -n "$uid" ]; then
     useraddOptions+=(--non-unique --uid "$uid")
-    log "Generated uid $uid"
 fi
 
 if [ -n "$gid" ]; then
@@ -71,6 +70,7 @@ if [ -n "$gid" ]; then
     useraddOptions+=(--gid "$gid")
 fi
 
+log "adding $user with uid $uid and gid $gid"
 useradd "${useraddOptions[@]}" "$user"
 mkdir -p "/home/$user"
 chown root:root "/home/$user"
@@ -97,7 +97,7 @@ if [[ -e "$aciUserKeypubsPath" ]] ; then
     log "copying public keys from $aciUserKeypubsPath"
     cp "$aciUserKeypubsPath"/* "$userKeypubsPath"/
 else
-    log "no public keys for $user at $aciUserKeypubsPath"
+    log "found no keypubs for $user at $aciUserKeypubsPath"
 fi
 
 if [ -d "$userAuthKeysPath"/keys ]; then
