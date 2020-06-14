@@ -1,6 +1,10 @@
 #!/bin/bash
 set -Eeo pipefail
 
+function log() {
+    echo "[$(date)][$0] $*" >&2
+}
+
 # shellcheck disable=2154
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
@@ -12,19 +16,15 @@ userConfPathLegacy="/etc/sftp-users.conf"
 userConfFinalPath="/var/run/sftp/users.conf"
 
 if [[ -z "$acipersistPath" ]]; then
-    $acipersistPath="/home/acipersist"
+    acipersistPath="/home/acipersist"
     log "found $acipersistPath"
 fi
 
 if [[ -f "$acipersistPath"/users.conf ]]; then
-    userConfPath="$acipersistPath"/users.conf
+    userConfPath="$acipersistPath/users.conf"
 else
     userConfPath="/etc/sftp/users.conf"
 fi
-
-function log() {
-    echo "[$(date)][$0] $*" >&2
-}
 
 # Allow running other programs, e.g. bash
 if [[ -z "$1" || "$1" =~ $reArgsMaybe ]]; then

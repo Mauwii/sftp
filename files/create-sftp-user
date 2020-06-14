@@ -12,14 +12,14 @@ reGid='[[:digit:]]*'
 reDir='[^:]*'
 #reArgs="^($reUser)(:$rePass)(:e)?(:$reUid)?(:$reGid)?(:$reDir)?$"
 
+function log() {
+    echo "[$(date)][$0] $*"
+}
+
 if [[ -z $acipersistPath ]]; then
     acipersistPath="/home/acipersist"
     log "set acipersistPath to $acipersistPath"
 fi
-
-function log() {
-    echo "[$(date)][$0] $*"
-}
 
 function validateArg() {
     name="$1"
