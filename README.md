@@ -51,13 +51,15 @@ docker run \
 #### Using Docker Compose:
 
 ``` YAML
-sftp:
-    image: mauwii/sftp
-    volumes:
-        - /host/upload:/home/foo/upload
+version: "3.8"
+services:
+  sftp-aci:
+    image: mauwii/sftp:acipersist
     ports:
-        - "2222:22"
-    command: foo:pass:1001
+      - 2222:2222/tcp
+    build:
+      context: .
+      dockerfile: Dockerfile
 ```
 
 #### Logging in
