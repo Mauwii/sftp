@@ -1,0 +1,6 @@
+*.DS_Store
+.env
+*.pub
+*ssh_host_*_key
+.dockerenv
+.vscode

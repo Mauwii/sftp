@@ -13,8 +13,13 @@ reDir='[^:]*'
 #reArgs="^($reUser)(:$rePass)(:e)?(:$reUid)?(:$reGid)?(:$reDir)?$"
 
 function log() {
-    echo "[$0] $*"
+    echo "[$(date)][$0] $*"
 }
+
+if [[ -z $acipersistPath ]]; then
+    acipersistPath="/home/acipersist"
+    log "set acipersistPath to $acipersistPath"
+fi
 
 function validateArg() {
     name="$1"
@@ -65,6 +70,7 @@ if [ -n "$gid" ]; then
     useraddOptions+=(--gid "$gid")
 fi
 
+log "adding $user with uid $uid and gid $gid"
 useradd "${useraddOptions[@]}" "$user"
 mkdir -p "/home/$user"
 chown root:root "/home/$user"
@@ -81,12 +87,26 @@ else
 fi
 
 # Add SSH keys to authorized_keys with valid permissions
-if [ -d "/home/$user/.ssh/keys" ]; then
-    for publickey in "/home/$user/.ssh/keys"/*; do
-        cat "$publickey" >> "/home/$user/.ssh/authorized_keys"
+
+userAuthKeysPath="/home/$user/.ssh"
+userKeypubsPath="$userAuthKeysPath/keys"
+aciUserKeypubsPath="/home/acipersist/userkeypubs/$user"
+
+if [[ -e "$aciUserKeypubsPath" ]] ; then
+    mkdir -p /home/$user/.ssh/keys
+    log "copying public keys from $aciUserKeypubsPath"
+    cp "$aciUserKeypubsPath"/* "$userKeypubsPath"/
+else
+    log "found no keypubs for $user at $aciUserKeypubsPath"
+fi
+
+if [ -d "$userAuthKeysPath"/keys ]; then
+    for publickey in "$userKeypubsPath"/* ; do
+        log "adding $publickey to authorized_keys"
+        cat "$publickey" >> "$userAuthKeysPath"/authorized_keys
     done
-    chown "$uid" "/home/$user/.ssh/authorized_keys"
-    chmod 600 "/home/$user/.ssh/authorized_keys"
+    chown "$uid" "$userAuthKeysPath/authorized_keys"
+    chmod 600 "$userAuthKeysPath/authorized_keys"
 fi
 
 # Make sure dirs exists

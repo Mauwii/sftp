@@ -1,15 +1,16 @@
-# Secure defaults
-# See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
 Protocol 2
 HostKey /etc/ssh/ssh_host_ed25519_key
 HostKey /etc/ssh/ssh_host_rsa_key
 
-# Faster connection
-# See: https://github.com/atmoz/sftp/issues/11
-UseDNS no
+AuthenticationMethods publickey
+AuthorizedKeysFile /home/%u/.ssh/authorized_keys
+PubkeyAuthentication yes
+PasswordAuthentication no
 
 # Limited access
+DenyUsers root
 PermitRootLogin no
+PermitEmptyPasswords no
 X11Forwarding no
 AllowTcpForwarding no
 
@@ -18,5 +19,8 @@ Subsystem sftp internal-sftp
 ForceCommand internal-sftp
 ChrootDirectory %h
 
+# Option to change SSH's Port
+Port 2222
+
 # Enable this for more logs
-#LogLevel VERBOSE
+LogLevel VERBOSE
